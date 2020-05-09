@@ -23,26 +23,7 @@ __copyright__ = "The GNU General Public License v3.0"
 
 from psaw import PushshiftAPI
 from datetime import datetime, timedelta
-import re
-
-
-def filter_tbl(tbl, min):
-    """
-    Filter a frequency table
-
-    :param list tbl: the table to be filtered
-    :param int min: the number of days in the past
-    :returns: the filtered table
-    """
-    BANNED_WORDS = [
-        'THE', 'FUCK', 'ING', 'CEO', 'USD', 'WSB', 'FDA', 'NEWS', 'FOR', 'YOU',
-        'BUY', 'HIGH', 'ADS', 'FOMO', 'THIS', 'OTC', 'ELI', 'IMO', 'NEW',
-        'CBS', 'SEC', 'NOW', 'OVER', 'ROPE', 'MOON', 'SSR', 'HOLD', 'SELL'
-    ]
-    tbl = [row for row in tbl if row[1] > min]
-    tbl = [row for row in tbl if row[0] not in BANNED_WORDS]
-    return tbl
-
+import re, sys
 
 def get_submission(n):
     """Returns a generator for the submission in past n days"""
@@ -51,7 +32,7 @@ def get_submission(n):
     s_timestamp = int(s_date.timestamp())
     gen = api.search_submissions(after=s_timestamp,
                                  subreddit='pennystocks',
-                                 filter=['title', 'selftext', 'author'])
+                                 filter=['title', 'selftext', 'author', 'url'])
     return gen
 
 
@@ -72,6 +53,7 @@ def get_freq_list(gen):
     title_dict = {}
     selftext_dict = {}
     all_dict = {}
+    url_tbl = {}
 
     for i in gen:
         if hasattr(i, 'title'):
@@ -82,6 +64,11 @@ def get_freq_list(gen):
                     title_dict[j] += 1
                 else:
                     title_dict[j] = 1
+
+                if j in url_tbl:
+                    url_tbl[j].append(i.url)
+                else:
+                    url_tbl[j] = [i.url]
 
                 if j in all_dict:
                     all_dict[j] += 1
@@ -102,12 +89,34 @@ def get_freq_list(gen):
                 else:
                     all_dict[j] = 1
 
+
     title_tbl = sorted(title_dict.items(), key=lambda x: x[1], reverse=True)
     selftext_tbl = sorted(selftext_dict.items(), key=lambda x: x[1],
                           reverse=True)
     all_tbl = sorted(all_dict.items(), key=lambda x: x[1], reverse=True)
 
-    return all_tbl, title_tbl, selftext_tbl
+    return all_tbl, title_tbl, selftext_tbl, url_tbl
+
+
+def filter_tbl(tbl, min, selectedStock):
+    """
+    Filter a frequency table
+
+    :param list tbl: the table to be filtered
+    :param int min: the number of days in the past
+    :returns: the filtered table
+    """
+    BANNED_WORDS = [
+        'THE', 'FUCK', 'ING', 'CEO', 'USD', 'WSB', 'FDA', 'NEWS', 'FOR', 'YOU',
+        'BUY', 'HIGH', 'ADS', 'FOMO', 'THIS', 'OTC', 'ELI', 'IMO', 'NEW',
+        'CBS', 'SEC', 'NOW', 'OVER', 'ROPE', 'MOON', 'SSR', 'HOLD', 'SELL'
+    ]
+    tbl = [row for row in tbl if row[1] > min]
+    if selectedStock == 'everything':
+        tbl = [row for row in tbl if row[0] not in BANNED_WORDS]
+    else:
+        tbl = [row for row in tbl if row[0] not in BANNED_WORDS and row[0] == selectedStock]
+    return tbl
 
 
 def print_tbl(tbl):
@@ -120,7 +129,43 @@ def print_tbl(tbl):
 
 
 if __name__ == '__main__':
-    gen = get_submission(1)  # Get 1 day worth of submission
-    all_tbl, _, _ = get_freq_list(gen)
-    all_tbl = filter_tbl(all_tbl, 2)
-    print_tbl(all_tbl)
+    print('Hi, what would you like to check?')
+    print('(a) Check all stocks ')
+    print('(s) Check a specific stock')
+    print('(x) Exit')
+    userSelection = input ('Select an option: ')
+    
+    if(userSelection.lower()=='x' or userSelection.isdigit()):
+        sys.exit('')
+    
+    print('Over how many days?')
+    numberOfDays = input ('Enter number of days or (x) to exit: ')
+
+    if(numberOfDays.lower()=='x'):
+        sys.exit('')
+
+    numberOfDays = int(numberOfDays)
+
+    if(userSelection.lower()=='a'):
+        gen = get_submission(numberOfDays)  # Get 1 day worth of submission
+        all_tbl, _, _,_ = get_freq_list(gen)
+        all_tbl = filter_tbl(all_tbl, 2, 'everything')
+        print_tbl(all_tbl)
+
+    if(userSelection.lower()=='s'):
+        stockSelection = input('Enter stock code: ')
+        if len(stockSelection)<=0:
+            stockSelection = 'everything'
+        else:
+            stockSelection = stockSelection.upper()
+
+        gen = get_submission(numberOfDays)  # Get 1 day worth of submission
+        all_tbl, _, _,urls_list = get_freq_list(gen)
+        all_tbl = filter_tbl(all_tbl, 2, stockSelection)
+        print_tbl(all_tbl)
+        if stockSelection != 'everything':
+            print('Found in urls:')
+            for url in urls_list[stockSelection]:
+                print(url)
+
+    sys.exit('')

@@ -14,6 +14,8 @@ Simply type in:
 
     python3 AutoDD.py
 
+Follow UI insturction to scan for all stocks or a specific stock.
+
 It will output the most frequently discussed 3-4 letter full-cap words in
 r/pennystocks
 
