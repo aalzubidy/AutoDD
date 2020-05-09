@@ -25,6 +25,26 @@ from psaw import PushshiftAPI
 from datetime import datetime, timedelta
 import re, sys
 
+def filter_tbl(tbl, min, selectedStock):
+    """
+    Filter a frequency table
+
+    :param list tbl: the table to be filtered
+    :param int min: the number of days in the past
+    :returns: the filtered table
+    """
+    BANNED_WORDS = [
+        'THE', 'FUCK', 'ING', 'CEO', 'USD', 'WSB', 'FDA', 'NEWS', 'FOR', 'YOU',
+        'BUY', 'HIGH', 'ADS', 'FOMO', 'THIS', 'OTC', 'ELI', 'IMO', 'NEW',
+        'CBS', 'SEC', 'NOW', 'OVER', 'ROPE', 'MOON', 'SSR', 'HOLD', 'SELL'
+    ]
+    tbl = [row for row in tbl if row[1] > min]
+    if selectedStock == 'everything':
+        tbl = [row for row in tbl if row[0] not in BANNED_WORDS]
+    else:
+        tbl = [row for row in tbl if row[0] not in BANNED_WORDS and row[0] == selectedStock]
+    return tbl
+
 def get_submission(n):
     """Returns a generator for the submission in past n days"""
     api = PushshiftAPI()
@@ -34,7 +54,6 @@ def get_submission(n):
                                  subreddit='pennystocks',
                                  filter=['title', 'selftext', 'author', 'url'])
     return gen
-
 
 def get_freq_list(gen):
     """
@@ -96,28 +115,6 @@ def get_freq_list(gen):
     all_tbl = sorted(all_dict.items(), key=lambda x: x[1], reverse=True)
 
     return all_tbl, title_tbl, selftext_tbl, url_tbl
-
-
-def filter_tbl(tbl, min, selectedStock):
-    """
-    Filter a frequency table
-
-    :param list tbl: the table to be filtered
-    :param int min: the number of days in the past
-    :returns: the filtered table
-    """
-    BANNED_WORDS = [
-        'THE', 'FUCK', 'ING', 'CEO', 'USD', 'WSB', 'FDA', 'NEWS', 'FOR', 'YOU',
-        'BUY', 'HIGH', 'ADS', 'FOMO', 'THIS', 'OTC', 'ELI', 'IMO', 'NEW',
-        'CBS', 'SEC', 'NOW', 'OVER', 'ROPE', 'MOON', 'SSR', 'HOLD', 'SELL'
-    ]
-    tbl = [row for row in tbl if row[1] > min]
-    if selectedStock == 'everything':
-        tbl = [row for row in tbl if row[0] not in BANNED_WORDS]
-    else:
-        tbl = [row for row in tbl if row[0] not in BANNED_WORDS and row[0] == selectedStock]
-    return tbl
-
 
 def print_tbl(tbl):
     print("Code\tFrequency")
